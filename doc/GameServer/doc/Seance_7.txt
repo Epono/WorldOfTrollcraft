@@ -1,0 +1,17 @@
+Fichier map:
+
+largeur;hauteur;
+f,f,f,t,f,t,f,f,f,f,f,f,
+f,t,f,f,f,f,r,r,r,r,r,r,
+r,f,f,f,f,r,r,r,r,r,r,r,
+w,w,w,f,r,f,f,f,r,r,r,r,
+w,w,w,w,f,f,f,f,f,f,f,f;
+
+tree 	: t
+water 	: w
+rock	: r
+free	: f
+
+
+	
+	

@@ -1,0 +1,154 @@
+Séance 5bis : 16/10
+
+	ORDRE DU JOUR :
+- Finir spécifications
+- Répartir les tâches
+
+		Client(s)	  Serveur
+	connect	|--->		 |(attente)
+			|	 --->	 |
+			|		 --->| accept
+			|		 <---|
+			|	 <---	 |
+			|<---		 |
+envoie login|--->		 | 
+			|	 --->	 |
+			|		 --->| vérification
+			|		 <---| envoie contexte
+			|	 <---	 |
+			|<---		 |
+déplacement |--->		 | 
+			|	 --->	 |
+			|		 --->| mise à jour Map
+			|		 <---| envoie contexte
+			|	 <---	 |
+			|<---		 |
+quitter     |--->		 | 
+			|	 ---<	 |
+			|		 --->| mise à jour Map
+			|		 <---| envoie contexte
+			|	 <---	 |
+			|<---		 |
+
+						
+---------------------------------------------------Specification de l'entete des paquets---------------------------------------------------
+
+___________________________________________________________
+| identification | longueur | type données|                |
+|     (fixé)     |   des    |    (fixée)  |  données  ...  |
+|		         | données  |             |           ...  |
+|________________|__________|_____________|________________|
+
+type de chaque element de l'entete : 
+	_ identification : int. (valeur en hexa-decimal : "2d4a68e9")
+	_ longueur : int.
+	_ type : char. (la plage de valeurs sera donc de -128 à 127, mais les valeurs pour les types de packets ne changent pas).
+
+Remarques : 
+	_ pour simplifier l'implémentation, aucun entier non signe ne doit être utilisé dans les paquets envoyes ; car les entiers non signes n'existe pas en java. 
+	  (cf JLS (Java Language Specification), page http://docs.oracle.com/javase/specs/jls/se7/html/jls-4.html#jls-4.2 ).
+	_ en java, les caracteres sont codes sur deux octets. Cependant, en C, ils sont codes sur un octets. donc, il faudra utiliser uniquement utiliser les caracteres
+	  codes sur un octet (en java, il faudra probablement convertir les caracteres de type 'char' en 'byte').
+
+
+-------------------------------------------Specification des types de paquets et du champs donnees-------------------------------------------
+
+|_____| = un champ (ex : type)
+|__:__| = un champ avec 2 (ou plus) valeurs (donnée)
+ici, champ "position" = "x:y"
+
+service COMPTE :
+		plage valeurs : 0-31
+		actions : 	- demande_authentification 	C->S	:	|indentification| |longueur| |0|  |login:mdp|		(possibilité de chiffrement en rajoutant un champ interprété par le serveur)		(condition : demande de connexion de la part d'un client)
+																						type de donnees : une chaine de caracteres.
+					- acceptation				S->C	:	|indentification| |longueur| |1|  ||				(champ donnée vide)																	(condition : acceptation du serveur)
+					- refus						S->C	:	|indentification| |longueur| |2|  ||				(champ donnée vide)																	(condition : refus du serveur)
+
+service GESTION_DE_JEU :
+		plage valeurs : 32-63
+		actions : 	- contexte			 		S->C	:	|indentification| |longueur| |32| |login_1:index_1:position_1:...:login_n:index_n:position_n|	(lors de l'arrivée sur la carte, toutes les positions de tous les joueurs sont envoyées au client)	(condition : arrivée du joueur sur la map)
+					- demande_deplacement 		C->S	:	|indentification| |longueur| |33| |type_deplacement|											(demande de déplacement vers une case valide adjacente(non décor)) 									(condition : demande de déplacement de la part d'un joueur)
+					- mise_a_jour_joueur 		S->Cs	:	|indentification| |longueur| |34| |index:nouvelle_position:ancienne_position|					(envoie de la nouvelle posititon d'un joueur) 														(condition : le serveur a accepté la demande de mouvement d'un joueur)
+					- refus_deplacement 		S->C	:	|indentification| |longueur| |35| ||															(refus du déplacement, champ données vide) 															(condition : le déplacment a été refusé par le serveur)
+					- deconnexion		 		C->S	:	|indentification| |longueur| |36| ||															(déconnexion d'un joueur (le serveur sait quel joueur grâce au socket), champ données vide)			(condition : un joueur se déconnecte)
+					- ajout_joueur 				S->Cs	:	|indentification| |longueur| |37| |login:index:position|										(envoie de la posititon d'un joueur qui vient de se connecter)										(condition : un nouveau joueur se connecte)
+					- suppresion_joueur 		S->Cs	:	|indentification| |longueur| |38| |index:position|												(suppression d'un joueur de la map des clients)														(condition : un joueur se déconnecte)
+
+
+multi-services : 
+		plage de valeurs : 64-96
+					- demande ping                      :   |indentification| |0| |64|  ||				(champ donnée vide)
+					- reponse ping                      :   |indentification| |0| |65|  ||				(champ donnée vide)
+
+
+--------------------------------------------------------Configuration des sockets--------------------------------------------------------
+
+
+Les paramètres a modifier sont : 
+		_ mode non-bloquant a activer (ce mode permet de rendre les fonctions accept, send et recv non bloquante),
+		_ mode TCP_NODELAY a activer (cette option permet que les donnees a envoyer soient immediatement envoyes sur le reseau),
+
+Remarque : Les types de packets "ping" décrits ci-dessous seront utilises, car le mode "keep alive" n'est pas configurable en java
+(par defaut, ce mode permet de detecter qu'une connexion est perdue au bout de 2 heure et 11 minutes d'inactivite sur la connexion).
+
+
+----------------------------------------------Annexe : configuration du mode "keep alive" en C---------------------------------------------
+
+Pour que tcp vérifie la persistance de la connexion, il faut activer le mode KEEP_ALIVE (ce mode à un sens uniquement pour les sockets en mode connecté).
+le fonctionnement de ce mode est decrit a cette page : http://tldp.org/HOWTO/html_single/TCP-Keepalive-HOWTO/#overview
+Ce mode est parametrable : 
+		_ l'option TCP_KEEPIDLE permet de specifier le nombre de secondes (d'inactivite sur la connexion, ie aucune donnee envoyee ou recu au niveau tcp) à 
+		  attendre avant de verifier la persistance de la connexion. Par defaut, ce temps est de 2 heures.
+		_ l'option TCP_KEEPCNT permet de spécifier le nombre de tests de la connexion avant de la considerer comme perdue. Par defaut, ce nombre est 9.
+		_ l'option TCP_KEEPINTVL permet de specifier le nombre de secondes a attendre entre chaque test de la connexion. Par defaut, cet interval est de 75 secondes 
+
+Remarque : un test de la connexion correspond à l'envoi d'un segment tcp jouant le role d'un "ping" (une reponse immédiate est demandee).
+
+activation du mode keep-alive et application de ces paramètres : voir l'implementation de la fonction "acceptNewConnections" dans le fichier src/network.c
+
+
+--------------------------------------------------------------------------------------------------------------------------------------------
+
+
+type_deplacement :	- gauche 	: 1
+					- haut 		: 2
+					- droite 	: 3
+					- bas 		: 4
+					
+					
+Deconnexion donne lieu à une mise_a_jour_joueur
+
+	
+Chaque service est attribuée à un Thread
+
+	
+Connexion <=> Socket
+Authentification <=> Compte
+
+	Client 					|	Serveur
+---------------------------------------------------
+Connect (1 fois)			|Accept (n clients)
+(0 : cool, -1 : arg)		|(-1 si erreur)
+(errno pour les erreurs)	|
+(défini dans errno.h)		|
+
+
+Prochaine séance => 23/10
+
+	
+Skype
+
+Kevin : 	Hinamori10
+Julien : 	killdragon78
+Charles : 	charlonien
+Guillaume :	epopona95
+Nicolas : 	nicolas.thierc
+Thibaut : 	A definir
+
+
+
+	A faire :
+- Se renseigner sur Thread en C, et partie réseau en C (sys/pthread.h), mutex
+- Nicolas doit envoyer le code du serveur
+
+

@@ -1,0 +1,54 @@
+Protocole applicatif
+
+Authentification :
+
+
+		Client(s)	  Serveur
+	connect	|--->		 |(attente)
+	(TCP)	|	 --->	 |
+			|		 --->| accept
+			|		 <---| (TCP)
+			|	 <---	 |
+			|<---		 |
+envoie login|--->		 | 
+Mot de passe|	 --->	 |
+			|		 --->| si vérification ok :
+			|		 <---|   envoie contexte au client authentifié.
+			|		 <---|   envoie maj carte(ajout joueur) à tous les autres clients.
+			|		 <---| sinon :
+			|		 <---|   envoie erreur d'authentification.
+			|	 <---	 |
+			|<---		 |
+
+
+Déplacement :
+
+
+déplacement |--->		 | 
+			|	 --->	 |
+			|		 --->| mise à jour Map
+			|		 <---| envoie contexte
+			|	 <---	 |
+			|<---		 |
+ 
+ Déconnexion :
+ 
+
+		Client(s)	  Serveur
+ Information |--->		 |(attente)
+ déconnexion |	 --->	 |
+			 |		 --->| envoi maj carte (joueur déconnecté).
+			 | 		 <---|
+			 |	 <---	 |
+			 |<---		 |
+			 
+			 
+			 
+			 
+quitter     |--->		 | 
+			|	 ---<	 |
+			|		 --->| mise à jour Map
+			|		 <---| envoie contexte
+			|	 <---	 |
+			|<---		 |
+ 

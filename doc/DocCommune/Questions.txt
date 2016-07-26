@@ -1,0 +1,48 @@
+Guillaume :
+	unsigned int existe pas en Java, juste int ça va ou ça posera probleme ? (peut être passer en int au lieu de unsigned int côté serveur du coup)
+			-> les int ne seront pas unsigned côté C (int normal côté Java), les char côté C correspond à des byte côté Java
+	ajout d'un service acceptation_deplacement (ou implicite via mise_a_jour_joueur ?) ?
+			-> implicite via mise_a_jour_joueur
+	Type de donnees quand ya des String/separateurs (Si tout le champ est de type String (mais envoye en byte) c'est beaucoup plus simple cote client :p)
+			-> on reste sur les types donnees avec un '\0' en caractere de fin de chaine (derriere les login)
+	Une reference du client dans le manager, inversement (en gros tout le monde a acces tout le monde ou presque) ?
+	Manager a une reference vers Client et inversement
+	Manager a une reference vers GUI et inversement
+	En gros, Manager sert de passerelle dans les 2 sens entre Client et GUI ? C'est bon ou c'est moche ?
+	Client <-> Manager <-> GUI
+	
+	Au niveau de l'acceptation de connexion par le serveur, plutot qu'envoyer 
+		|identification| |longueur| |1|  ||	
+	faudrait pas plutot envoyer un truc du genre ?
+		|identification| |longueur| |1|  |index:position|	
+	Ou on le deduit du contexte en cherchant notre login dans la trame ?
+			->Joueur local place en debut de trame contexte
+			
+	Questions jeu d'essai,
+		Le client doit il verifier si les informations fournies par le serveur sont bonnes ?
+			-> Non le serveur est intelligent et envoie rien de debile
+
+
+
+
+Nicolas :
+
+
+
+
+Kevin :
+
+
+
+
+Tibauld :
+
+
+
+
+Julien :
+
+
+
+
+Charles :

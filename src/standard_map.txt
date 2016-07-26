@@ -1,0 +1,16 @@
+20;15;
+r,r,r,r,r,r,r,r,f,f,f,f,f,f,f,f,f,f,f,t,
+r,r,r,r,r,r,f,f,f,f,f,f,f,f,f,f,t,t,f,f,
+r,r,r,r,f,f,f,f,f,f,f,w,w,f,f,f,t,t,f,f,
+r,r,f,f,f,r,r,f,f,f,f,w,w,f,f,f,f,t,t,f,
+r,f,f,r,f,f,f,f,f,f,f,w,w,w,f,f,f,f,f,f,
+r,f,f,f,f,f,f,f,f,f,w,w,w,w,w,f,f,f,f,f,
+f,f,f,f,f,f,f,f,f,f,w,w,w,w,w,f,f,f,f,f,
+f,f,f,f,f,t,f,f,f,w,w,w,w,w,w,w,f,f,f,f,
+f,f,f,t,f,f,f,t,f,w,w,w,w,w,w,w,f,f,f,f,
+f,f,f,t,t,f,f,f,f,f,w,w,w,f,f,w,f,f,f,f,
+f,f,t,t,t,t,f,f,f,f,w,w,f,f,f,f,f,f,f,f,
+f,f,t,t,t,t,t,f,f,f,w,f,f,f,f,f,f,f,t,t,
+f,f,f,t,t,f,f,f,f,f,f,f,f,f,f,t,t,t,t,t,
+f,f,f,f,f,f,f,f,f,f,f,f,f,f,t,t,t,t,t,t,
+f,f,f,f,f,f,f,f,f,f,f,f,f,f,f,f,f,t,t,t;

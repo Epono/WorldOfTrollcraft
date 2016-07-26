@@ -1,0 +1,473 @@
+Séance 3
+
+feuille bordel attribué à AMBROIS Guillaume
+
+Serveur envoie la map au client : map=structure de donnée.
+
+On dispose de 5 actions différentes:-haut
+					-bas
+					-droite
+					-gauche
+					-quitter ( déconnexion)
+le serveur attend donc que le client demande ces actions.
+
+On effectue un ping constant vers les joueurs
+
+on a donc deux actions distinctes : - déplacement
+déconnexion
+
+QUITTER :
+	-(sauvegarde de la situation du joueur)
+	-le serveur envoie la map refresh au autres joueurs sur la map
+
+DEPLACEMENT : 
+vérification de la validité de la destination de déplacement.
+Si validité ok  → spawn aux dernière positions
+Sinon → spawn aléatoire sur la map (aussi pour le premier pop)
+si poition de destination occupé on ignore le déplacement
+
+STRUCTURE MAP :
+Tableau a 2D
+cases  remplies d'une union
+
+		union case{
+			int type ;
+			struct joueur ;
+			struct decor ;
+		}
+		
+		struct joueur{
+			int type ;
+		}
+
+Le serveur envoie donc la liste des joueurs qu'il sauvegarde de temps en temps dans un fichier . Plus à chaque déconnexion. 
+
+Joueur : 
+login
+MDP
+position
+
+deux base une pour les joueurs connecté et une autre pour les non connecté.
+
+Pour les joueurs connecté :
+joueurs :
+login
+socket(reseau)
+position
+
+On index les joueurs comme dans un SGBDR Le premier joueur connecté à le premier index.
+
+Decor : type
+
+
+
+--------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+--------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+
+
+
+
+Séance 4 : 7/10
+
+#define NB_JOUEURS_MAX 200
+#define TAILLE_MAP 200
+
+typedef enum {
+TREE = 1, 
+WATER = 2, 
+ROCK = 4
+} TypeDecor ;
+
+typedef union {
+	int typeUnion;				//type de l'element dans la cellule, 0 : joueur, 1 : decor, 2 : libre
+	AccessPlayer accessPlayer;				
+	Decor decor;				
+} Cell;
+
+typedef strut {
+	int typeUnion ;
+	TypeDecor typeDecor ;
+} Decor ;
+
+typedef struct {
+	int typeUnion ;
+	Player *player ;
+} AccessPlayer;
+
+typedef struct {
+	int x ;
+	int y ;
+}  Coordinate ;
+
+typedef struct {
+	Player *players[NB_JOUEURS_MAX];
+	Pile indexesAvailable;
+	int nombreJoueurs;
+} PlayerManagement;
+
+typedef struct {
+	PlayerManagement playerManagement;
+	Cellule map[TAILLE_MAP][TAILLE_MAP];
+} WorldMap ;
+
+typedef struct {
+	int index ;
+	Coordinate playerLocation;
+	char *login ;
+	//password stocké en dur
+} Player ;
+
+typedef struct {
+	int socket;
+} Network;
+
+
+Identifiant de joueur en fonction de l'ordre de connexion (ou unique via hashage ?)
+
+Stockage des joueurs : 
+	- Dans la mémoire : Stockage des joueurs connectés (via pointeurs) dans un tableau avec une pile stockant les emplacement du tableau disponibles
+	- En dur : Dans un fichier (texte)  (dans un premier temps, écrit à la main, module création de comptes pour plus tard)
+		login:mdp:x:y		
+	(x et y vides lors de la 1ere connexion)
+
+Sauvegarde régulière des infos (position joueur) (genre toutes les 10sec) ou pendant période d'inactivité.
+Ping régulier vers les clients pour détecter une déconnexion intempestive.
+
+
+
+STRUCTURES PAS DIRECTEMENT POINTEES !?
+
+Réseau en TCP !
+
+
+
+--------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+--------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+
+
+
+
+
+Séance 5bis : 16/10
+
+	ORDRE DU JOUR :
+- Finir spécifications
+- Répartir les tâches
+
+		Client(s)	  Serveur
+	connect	|--->		 |(attente)
+			|	 --->	 |
+			|		 --->| accept
+			|		 <---|
+			|	 <---	 |
+			|<---		 |
+envoie login|--->		 | 
+			|	 --->	 |
+			|		 --->| vérification
+			|		 <---| envoie contexte
+			|	 <---	 |
+			|<---		 |
+déplacement |--->		 | 
+			|	 --->	 |
+			|		 --->| mise à jour Map
+			|		 <---| envoie contexte
+			|	 <---	 |
+			|<---		 |
+quitter     |--->		 | 
+			|	 ---<	 |
+			|		 --->| mise à jour Map
+			|		 <---| envoie contexte
+			|	 <---	 |
+			|<---		 |
+
+						
+---------------------------------------------------Specification de l'entete des paquets---------------------------------------------------
+
+_______________________________________________...___
+| en tete | longueur | type données|           ...  |
+| (fixé)  |   des    |    (fixée)  |  données  ...  |
+|		  | données  |             |           ...  |
+|_________|__________|_____________|___________...__|
+
+type de chaque element de l'entete : 
+	_ identification : int. (valeur en hexa-decimal : "2d4a68e9")
+	_ longueur : int.
+	_ type : char. (la plage de valeurs sera donc de -128 à 127, mais les valeurs pour les types de packets ne changent pas).
+
+Remarques : 
+	_ pour simplifier l'implémentation, aucun entier non signe ne doit être utilisé dans les paquets envoyes ; car les entiers non signes n'existe pas en java. 
+	  (cf JLS (Java Language Specification), page http://docs.oracle.com/javase/specs/jls/se7/html/jls-4.html#jls-4.2 ).
+	_ en java, les caracteres sont codes sur deux octets. Cependant, en C, ils sont codes sur un octets. donc, il faudra utiliser uniquement utiliser les caracteres
+	  codes sur un octet (en java, il faudra probablement convertir les caracteres de type 'char' en 'byte').
+
+
+-------------------------------------------Specification des types de paquets et du champs donnees-------------------------------------------
+
+|_____| = un champ (ex : type)
+|__:__| = un champ avec 2 (ou plus) valeurs (donnée)
+ici, champ "position" = "x:y"
+ 
+service COMPTE :
+		plage valeurs : 0-31
+		actions : 	- demande_authentification 	C->S	:	|identification| |longueur| |0|  |login:mdp|		(possibilité de chiffrement en rajoutant un champ interprété par le serveur)		(condition : demande de connexion de la part d'un client)
+																								type de donnees : String + '\0' + String
+					- acceptation				S->C	:	|identification| |longueur| |1|  ||					(champ donnée vide)																	(condition : acceptation du serveur)
+					- refus						S->C	:	|identification| |longueur| |2|  ||					(champ donnée vide)																	(condition : refus du serveur)
+
+service GESTION_DE_JEU :
+		plage valeurs : 32-63
+		actions : 	- contexte			 		S->C	:	|identification| |longueur| |32| |login_1:index_1:position_1:...:login_n:index_n:position_n|				(lors de l'arrivée sur la carte, toutes les positions de tous les joueurs sont envoyées au client)	(condition : arrivée du joueur sur la map)
+																								type de donnees : (String + '\0' +  char/byte + 2 * short) * char/byte)		le client a qui on l'envoie est en premiere position
+					- demande_deplacement 		C->S	:	|identification| |longueur| |33| |type_deplacement|															(demande de déplacement vers une case valide adjacente(non décor)) 									(condition : demande de déplacement de la part d'un joueur)
+																								type de donnees : char/byte
+					- mise_a_jour_joueur 		S->Cs	:	|identification| |longueur| |34| |index:nouvelle_position:ancienne_position|								(envoie de la nouvelle posititon d'un joueur) 														(condition : le serveur a accepté la demande de mouvement d'un joueur)
+																								type de donnees : char/byte + 4 * short
+					- refus_deplacement 		S->C	:	|identification| |longueur| |35| ||																			(refus du déplacement, champ données vide) 															(condition : le déplacment a été refusé par le serveur)
+					- deconnexion		 		C->S	:	|identification| |longueur| |36| ||																			(déconnexion d'un joueur (le serveur sait quel joueur grâce au socket), champ données vide)			(condition : un joueur se déconnecte)
+					- ajout_joueur 				S->Cs	:	|identification| |longueur| |37| |login:index:position|														(envoie de la posititon d'un joueur qui vient de se connecter)										(condition : un nouveau joueur se connecte)
+																								type de donnees : une chaine de caracteres + char/byte + 2 * short
+					- suppresion_joueur 		S->Cs	:	|identification| |longueur| |38| |index:position|															(suppression d'un joueur de la map des clients)														(condition : un joueur se déconnecte)
+																								type de donnees : char/byte + 2 * short
+																						
+--------------------------------------------------------configuration des sockets--------------------------------------------------------
+
+Les types de packets "ping" décrits ci-dessous ne seront pas utilises. A la place, il faudra parametrer les sockets (en mode connecte utilisant tcp).
+Les paramètres a modifier sont : 
+		_ mode non-bloquant a activer (ce mode permet de rendre les fonctions accept, send et recv non bloquante),
+		_ mode TCP_NODELAY a activer (cette option permet que les donnees a envoyer soient immediatement envoyes sur le reseau),
+
+De plus, pour que tcp vérifie la persistance de la connexion, il faut activer le mode KEEP_ALIVE (ce mode à un sens uniquement pour les sockets en mode connecté).
+le fonctionnement de ce mode est decrit a cette page : http://tldp.org/HOWTO/html_single/TCP-Keepalive-HOWTO/#overview
+Ce mode est parametrable : 
+		_ l'option TCP_KEEPIDLE permet de specifier le nombre de secondes (d'inactivite sur la connexion, ie aucune donnee envoyee ou recu) à attendre
+		  avant de verifier la persistance de la connexion.
+		_ l'option TCP_KEEPCNT permet de spécifier le nombre de tests de la connexion avant de la considerer comme perdue.
+		_ l'option TCP_KEEPINTVL permet de specifier le nombre de secondes a attendre entre chaque test de la connexion.
+
+Remarque : un test de la connexion correspond à l'envoi d'un segment tcp jouant le role d'un "ping" (une reponse immédiate est demandee).
+
+activation du mode keep-alive et application de ces paramètres :
+	_ en C : voir l'implementation de la fonction "acceptNewConnections" dans le fichier src/network.c  
+
+	_ en java : a voir.
+	
+
+--------------------------------------------------------------------------------------------------------------------------------------------
+ Types de paquets a ne plus utiliser.
+multi-services : 
+		plage de valeurs : 64-96
+					- demande ping                      :   |en_tete| |longueur| |64|  ||				(champ donnée vide)
+					- reponse ping                      :   |en_tete| |longueur| |65|  ||				(champ donnée vide)
+
+--------------------------------------------------------------------------------------------------------------------------------------------
+
+
+																						
+type_deplacement :	- gauche 	: 1
+					- haut 		: 2
+					- droite 	: 3
+					- bas 		: 4
+					
+					
+Deconnexion donne lieu à une mise_a_jour_joueur
+
+	
+Chaque service est attribuée à un Thread
+
+	
+Connexion <=> Socket
+Authentification <=> Compte
+
+	Client 					|	Serveur
+---------------------------------------------------
+Connect (1 fois)			|Accept (n clients)
+(0 : cool, -1 : arg)		|(-1 si erreur)
+(errno pour les erreurs)	|
+(défini dans errno.h)		|
+
+
+Prochaine séance => 23/10
+
+	
+Skype
+
+Kevin : 	Hinamori10
+Julien : 	killdragon78
+Charles : 	charlonien
+Guillaume :	epopona95
+Nicolas : 	nicolas.thierc
+Thibaut : 	A definir
+
+
+
+	A faire :
+- Se renseigner sur Thread en C, et partie réseau en C (sys/pthread.h), mutex
+- Nicolas doit envoyer le code du serveur
+
+
+
+--------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+--------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+
+
+
+
+Séance 6 : 23/10
+
+	ORDRE DU JOUR :
+- Finir spécifications (côté client principalement)
+- Répartir les tâches
+
+
+		- Spécifications
+		
+public class Map {
+//	private static final int MAP_SIZE = 100;
+	private HashMap <Integer, Coordinate> players;
+	private Cell [][] cells;				//null si case libre (on affiche de l'herbe)
+	private Coordinate positionPlayer;
+}
+
+public abstract class Cell {
+	public abstract byte getID();
+}
+
+public class Player extends Cell{
+	private String login;
+	private int index;
+	
+	public byte getID() {	
+		return 0;					//ID de player
+	}
+}
+
+public class Set extends Cell{
+	private SetType setType;
+	
+	public byte getID() {
+		return 1;					//ID de decor
+	}
+}
+
+public enum SetType{
+	TREE = 1, 
+	WATER = 2, 
+	ROCK = 4
+}
+
+public enum Direction {
+	LEFT(1), UP(5), RIGHT(3), DOWN(2);
+	...
+}
+
+public class Coordinate {
+	private int x;
+	private int y;
+}
+
+trunk/
+	Game_Server/
+		includes/
+		src/
+		doc/
+		makefile
+		
+	Game_Client/
+		lib/
+		src/
+		doc/
+		
+		
+Répartition :
+		Client : Charles, Guillaume, Julien, Kevin
+		
+		Serveur : Thibault, Nicolas
+
+
+		
+		
+		
+--------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+--------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+
+
+
+
+Paramètres : largeur;hauteur;
+
+20;15;
+r,r,r,r,r,r,r,r,f,f,f,f,f,f,f,f,f,f,f,f,
+r,r,r,r,r,r,f,f,f,f,f,f,f,f,f,f,t,t,f,f,
+r,r,r,r,f,f,f,f,f,f,f,w,w,f,f,f,t,t,f,f,
+r,r,f,f,f,f,f,f,f,f,f,w,w,f,f,f,f,t,t,f,
+r,f,f,f,f,f,f,f,f,f,f,w,w,w,f,f,f,f,f,f,
+r,f,f,f,f,f,f,f,f,f,w,w,w,w,w,f,f,f,f,f,
+f,f,f,f,f,f,f,f,f,f,w,w,w,w,w,f,f,f,f,f,
+f,f,f,f,f,f,f,f,f,w,w,w,w,w,w,w,f,f,f,f,
+f,f,f,t,f,f,f,f,f,w,w,w,w,w,w,w,f,f,f,f,
+f,f,f,t,t,f,f,f,f,f,w,w,w,f,f,w,f,f,f,f,
+f,f,t,t,t,t,f,f,f,f,w,w,f,f,f,f,f,f,f,f,
+f,f,t,t,t,t,t,f,f,f,w,f,f,f,f,f,f,f,t,t,
+f,f,f,t,t,f,f,f,f,f,f,f,f,f,f,t,t,t,t,t,
+f,f,f,f,f,f,f,f,f,f,f,f,f,f,t,t,t,t,t,t,
+f,f,f,f,f,f,f,f,f,f,f,f,f,f,f,f,f,t,t,t;
+
+tree 	: t
+water 	: w
+rock	: r
+free	: f
+
+hauteur : 75
+largeur : 100
+	
+	
+
+
+--------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+--------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+
+Rapport :
+
+Intro :
+	Contexte
+	Sujet
+	Environnement technique
+
+Corps :
+	Spécifications du jeu
+		Spécifications fonctionnelles
+		(actions joueurs, nbjoueurs, map)
+
+		Spécifications réseau
+		(Protocole réseau, protocole gestion de paquet, protocole applicatif)
+
+	Implémentation
+		Client 	=> GUI
+				=> Moteur/Réseau
+
+		Serveur => Couche réseau
+				=> Couche moteur
+
+	Tests
+
+	Analyse Critique
+
+Conclusion :
+
+
+
+--------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+--------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+
+
+Serveur résiste bien au nombre 
+	10 clients boucle infinie deplacement => serveur 50ko/s reception | 250ko/s envoie | 50% processeur (pc fac)
+		=> marche très bien côté client (petit scintillement)
+		=> faible consommation memoire/reseau du serveur
+
+	~XXXX traitements/sec
+
+Problèmes :
+	quand un client est déco brutalement le serveur continue d'essayer de lui envoyer des paquets
+	parfois le client plante avec un ioobe pendant la boucle infinie
+	quand le serveur plante mechamment, le client ne recoit pas le signal de deco

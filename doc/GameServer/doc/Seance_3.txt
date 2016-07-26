@@ -1,0 +1,60 @@
+Séance 3
+
+feuille bordel attribué à AMBROIS Guillaume
+
+Serveur envoie la map au client : map=structure de donnée.
+
+On dispose de 5 actions différentes:-haut
+					-bas
+					-droite
+					-gauche
+					-quitter ( déconnexion)
+le serveur attend donc que le client demande ces actions.
+
+On effectue un ping constant vers les joueurs
+
+on a donc deux actions distinctes : - déplacement
+déconnexion
+
+QUITTER :
+	-(sauvegarde de la situation du joueur)
+	-le serveur envoie la map refresh au autres joueurs sur la map
+
+DEPLACEMENT : 
+vérification de la validité de la destination de déplacement.
+Si validité ok  → spawn aux dernière positions
+Sinon → spawn aléatoire sur la map (aussi pour le premier pop)
+si poition de destination occupé on ignore le déplacement
+
+STRUCTURE MAP :
+Tableau a 2D
+cases  remplies d'une union
+
+		union case{
+			int type ;
+			struct joueur ;
+			struct decor ;
+		}
+		
+		struct joueur{
+			int type ;
+		}
+
+Le serveur envoie donc la liste des joueurs qu'il sauvegarde de temps en temps dans un fichier . Plus à chaque déconnexion. 
+
+Joueur : 
+login
+MDP
+position
+
+deux base une pour les joueurs connecté et une autre pour les non connecté.
+
+Pour les joueurs connecté :
+joueurs :
+login
+socket(reseau)
+position
+
+On index les joueurs comme dans un SGBDR Le premier joueur connecté à le premier index.
+
+Decor : type

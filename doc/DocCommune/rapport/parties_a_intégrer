@@ -1,0 +1,85 @@
+2.2.2 : les paquets.
+
+Dans la section précédente a été exposé les différentes données échangées entre le serveur et un ou plusieurs clients.
+Ces données sont de tailles très différentes selon leur type. Par exemple, lorsque le client envoie une demande d'authentification au serveur, les données envoyées sont le pseudo et le mot de passe (soit une longueur totale oscillant entre 10 et 40 caractères).
+Cependant, quand le serveur renvoie au client le refus de la demande d'authentification, un octet suffit (car, pour des raisons de sécurité, on ne notifie pas la raison de ce refus au client).
+De plus, transmettre en représentation binaire de certains types de données (au lieu d'une représentation en chaine de caractères), tels que les nombre entiers, permettrait de réduire la taille de ces dernières.
+
+Par conséquent, un système de paquets encapsulant les données échangées est mis en place, afin de détecter de façon homogène le début et la fin de chaque séquence de données.
+Ce dernier point est indispensable si le flux entrant contient plusieurs messages en attente d'être traité.
+
+Chaque paquet est composé d'un entête et d'un champ de données. Ce dernier est de taille variable et peut être vide.
+L'entête contient 3 champs : l'identifiant de début de paquet, la longueur des données et le type de paquet. Le champ identifiant de début de paquet, un entier signé sur 32 bits, sert à détecter le début de chaque paquet reçu.
+Le champ longueur des données est un entier sur 32 bits qui représente la taille du champ de données en octets.
+Le champ type est un entier signé sur 8 bits, et permet de rapidement décider de l'action à réaliser.
+Par exemple, si le client reçoit un paquet de type 2, il déclenche l'action correspondante au refus de demande d'authentification.
+
+Comme le serveur est composé deux services, à chacun de ces services est associé une plage de valeurs pour le champ type de données (le découpage de cette plage est analogue au celui d'une plage d'adresses IP).
+Cela permet de savoir rapidement à quel service correspond un paquet, en utilisant une condition d'égalité et un "et" binaire.
+Le service authentification a la plage de valeurs 0-31 et le service jeu gère les valeurs de l'ensemble 32-63.
+
+Le tableau ci-dessous spécifie, pour chaque type de communication, la valeur du champ type, le sens d'envoi ("client -> serveur" ou "serveur -> client"), ainsi que le format du champ de données correspondants.
+
+		type de communication			Sens d'envoi 			Type  		 					Données		 	 												Représentation données
+
+		demande authentification		Client -> Serveur		0								|login:mdp|														String + '\0' + String
+		acceptation authentification	Serveur -> Client 		1								N/A 															N/A
+		refus authentification			Serveur -> Client 		2								N/A 															N/A
+
+		contexte						Serveur -> Client 		32								|login_1:index_1:position_1:...:login_n:index_n:position_n|		(String + '\0' +  char/byte + 2 * short) * char/byte)
+		demande déplacement				Client -> Serveur 		33								|type_deplacement|												char/byte
+		mise_a_jour_joueur				Serveur -> Clients 		34								|index:nouvelle_position:ancienne_position|						char/byte + 4 * short					
+		refus_deplacement				Serveur -> Client  		35								N/A 															N/A
+		déconnexion						Client -> Serveur 		36								N/A 															N/A
+		ajout_joueurs					Serveur -> Clients 		37								|login:index:position|											une chaine de caracteres + char/byte + 2 * short
+		suppression joueur 				Serveur -> Clients 		38								|index:position|												char/byte + 2 * short
+
+		requete ping 					Clients <-> Serveur 	64								N/A 															N/A
+		reponse ping 					Clients <-> Serveur 	65								N/A 															N/A
+
+Note : ici, le type String représente une suite de caractères au format ascii (seuls les caractères de la table ascii non étendue sont utilisés). 
+2.2.3 : Protocole réseau sous-jacent
+
+Le protocole applicatif ne permettant pas la perte de données, les communications réseaux doivent être fiables et en mode connecté.
+Par conséquent, le protocole réseau sous-jacent à utiliser est TCP (Transmission Control Protocol).
+Afin d'éviter la congestion du réseau, ce dernier accumule les données à envoyer jusqu'à une certaine quantité d'octets ou pendant un certain temps, puis les envoie dans un seul paquet (comportement par défaut).
+Cependant, comme le projet réalisé nécessite du temps réel et principalement des échanges de données de l'ordre de 20 octets, ce comportement sera désactivé (par le biais de l'option TCP_NO_DELAY) afin d'accroitre les performances.
+
+
+2.2.4Gestion des erreurs
+
+La perte de connexion : tcp est un protocole de communication en mode connecté, c'est pourquoi, si un paquet envoyé n'est pas transmis (acquittement correspondant non reçu) dans un certain délai (ou time-out), la connexion est considérée comme perdue.
+
+Cependant, par défaut, ce problème n'est pas géré lorsqu'il n'y a aucun trafic réseau. Donc, pour pallier à ce problème, il existe l'option TCP_KEEP_ALIVE. Cette dernière active le comportement suivant : 
+après un certain temps h d'inactivité (par défaut, h = 2 heures), un paquet tcp ayant le rôle d'un "ping" est envoyé et une réponse immédiate est demandée; si aucune "réponse" n'est reçue au bout de t secondes (par défaut, t=75), cette opération est de nouveau effectuée.
+Si au bout de n tentatives (par défaut, n=9), aucune réponse n'est reçue, la connexion est considérée comme perdue. Donc, par défaut, une connexion peut être considérée comme perdue après 2*3600 + 75*9 = 7875 secondes, soit environ 2 heures et 11 minutes.
+
+Ce temps de détection n'étant pas acceptable pour un jeu multi-joueurs en réseau, et les délais n'étant pas modifiables en java, l'utilisation de cette option a été abandonnée.
+La solution finalement retenue est l'envoi, après un certain temps d'inactivité de 1 seconde, d'un paquet de type "demande ping" ; afin de relancer l'activité sur la connexion.
+Donc, la perte de connexion est bien détectée. Ensuite, l'application cliente et le serveur gèrent en conséquence.
+
+
+Identification du début des paquets reçus : 
+Supposons que l'on réceptionne dans le flux entrant de la connexion un paquet de 16 octets avec une longueur des données erronée, par exemple 8 octets au lieu de 11.
+Dans ce cas, l'entête du paquet reçu est extrait du flux et analysé, puis les 8 octets du champ de données sont retirés.
+Donc il reste 3 octets dans le flux. Si un autre paquet est reçu pendant l'opération précédente, ce deuxième ne sera pas lu correctement, puisque, l'entête qui sera analysée contiendra les 3 octets restants du paquet précédent.
+Par conséquent, le champ "taille des données" peut contenir la valeur 100 000 au lieu de 1 octet, et ce paquet n'aura plus de sens.
+Afin de pallier à ce problème, il y a un champ "identifiant" au début de l'entête des paquets (ce dernier a une valeur fixe sur 32 bits). 
+Pour détecter le début du paquet, l'algorithme suivant est utilisé : 
+
+TANT qu'il reste au moins 4 octets à lire dans le flux
+FAIRE
+	lire ces 4 premiers octets
+	SI ils correspondent à la valeur fixée précédement
+		lire le paquet
+		sortir de la boucle
+	SINON
+		retirer 1 octet du flux
+	FIN SI
+FIN TANT QUE
+
+
+Annexes : 
+\href{http://tldp.org/HOWTO/TCP-Keepalive-HOWTO/index.html}{description du mode tcp keep alive}
+Livre TCP/IP : architectures, protocoles et applications
+de Douglas Comer, 5ème édition, Pearson éducation 

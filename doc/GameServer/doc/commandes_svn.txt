@@ -1,0 +1,24 @@
+SVN - subversion 
+
+pour intéger un dossier svn faire un checkout :
+	svn checkout http://.....
+	
+Mettre a jour sur votre machine le dossier svn :
+	se placer dans truck/
+	svn update
+	
+Envoyer un fichier modifier
+	svn commit -m message\ de\ commit
+	
+Vous pouvez ajouter un fichier dans l'aborescence svn
+Or lors du commit celui-i ne sera pas transmis au serveur.
+Il faut l'ajouter :
+	svn add nom_du_fichier.txt
+	
+On peut aussi en retirer un avec :
+	svn remove nom_du_fichier.txt
+	
+De la même manière on peut ajouter ou supprimer un dossier
+En revanche celui-ci doit etre vide lors de la suppression
+
+

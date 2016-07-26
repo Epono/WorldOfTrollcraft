@@ -1,0 +1,72 @@
+Protocole réseau utilisé :
+
+
+		TCP, big/little endian, 	
+
+
+
+	
+Protocole applicatif :
+
+
+
+		Lorsqu'un joueur veut se connecter, il envoie une requête de connexion au serveur contenant son login et son mot de passe. 
+			- Si le couple login/mot de passe existe et que le joueur n'est pas déja connecté, le serveur lui envoie un paquet contenant tous les noms et emplacement des joueurs connectés, sa position étant indiquée en premier. 
+			- Sinon, le serveur lui envoie un paquet lui indiquant que la connexion n'a pas pu être effectuée.
+
+		Lorsqu'un joueur veut se déplacer, une requête est envoyée au serveur, qui détermine si le déplacement est valide. 
+			- S'il l'est, le serveur envoie un paquet à tous les clients indiquant que le joueur s'est déplacé.
+			- Sinon, le serveur envoie un paquet seulement au joueur ayant effectué le déplacement, lui signifiant que son déplacement a été refusé.
+
+		Lorsqu'un joueur veut se déconnecter, il envoie une requête de déconnexion au serveur, qui sauvegarde sa position et envoie un paquet à tous les joueurs présents sur la carte, leur indiquant que le joueur s'est deconnecté.
+
+		Des requêtes de ping sont effectuées régulièrement de la part des clients afin de vérifier que le serveur est toujours actif.
+		Des requêtes de ping sont également effectuées régulièrement par le serveur pour s'assurer que tous les clients sont toujours connectés.
+
+
+
+
+Les paquets :
+
+
+
+	Nous avons défini nos propres paquets dans ce projet, composés de 4 champs :
+			- Un champ "en-tête", contenant un identifiant unique à notre application.
+			  Représenté sur 4 octets.
+			- Un champ "longueur des données", contenant la longueur du champ "données".
+			  Représenté sur 4 octets.
+			- Un champ "type du paquet", qui contient de type du paquet.
+			  Représenté sur 1 octet.
+			- Un champ "données", qui contient les données utiles.
+			  Les données sont sous forme binaire.
+			  Taille donnée par le champ "longueur des données".
+
+
+	Les différents paquets utilisés dans ce projet sont les suivants :
+
+		Nom paquet 						Sens paquets 			Numéro paquet 					données paquet 	 												Représentation données
+
+		demande authentification		Client -> Serveur		0								|login:mdp|														String + '\0' + String
+		acceptation authentification	Serveur -> Client 		1								N/A 															N/A
+		refus authentification			Serveur -> Client 		2								N/A 															N/A
+
+		contexte						Serveur -> Client 		32								|login_1:index_1:position_1:...:login_n:index_n:position_n|		(String + '\0' +  char/byte + 2 * short) * char/byte)
+		demande déplacement				Client -> Serveur 		33								|type_deplacement|												char/byte
+		mise_a_jour_joueur				Serveur -> Clients 		34								|index:nouvelle_position:ancienne_position|						char/byte + 4 * short					
+		refus_deplacement				Serveur -> Client  		35								N/A 															N/A
+		déconnexion						Client -> Serveur 		36								N/A 															N/A
+		ajout_joueurs					Serveur -> Clients 		37								|login:index:position|											une chaine de caracteres + char/byte + 2 * short
+		suppression joueur 				Serveur -> Clients 		38								|index:position|												char/byte + 2 * short
+
+		requete ping 					Clients <-> Serveur 	64								N/A 															N/A
+		reponse ping 					Clients <-> Serveur 	65								N/A 															N/A
+
+
+	Gestion des erreurs : 
+
+		Tolérance déconnexion : Lors de la perte de connexion entre un client et le serveur :
+								- Le serveur procède à l'éviction du client en question.
+								- L'application client notifie l'utilisateur que la connexion avec le serveur a été perdue.
+
+		Injection paquets : Un champ d'en-tête permet de filtrer les paquets que l'application reçoit (côté client comme côté serveur).
+							Si l'en-tête ne correspond pas à la valeur stockée en dur dans le code, le flux d'entrée est ignoré octet par octet jusqu'à retrouver cet identifiant.

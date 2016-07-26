@@ -1,0 +1,73 @@
+Séance 6 : 23/10
+
+	ORDRE DU JOUR :
+- Finir spécifications (côté client principalement)
+- Répartir les tâches
+
+
+		- Spécifications
+		
+public class Map {
+//	private static final int MAP_SIZE = 100;
+	private HashMap <Integer, Coordinate> players;
+	private Cell [MAP_SIZE][MAP_SIZE]cells;				//null si case libre (on affiche de l'herbe)
+	private Coordinate positionPlayer;
+}
+
+public abstract class Cell {
+	public abstract byte getID();
+}
+
+public class Player extends Cell{
+	private String login;
+	private int index;
+	
+	public byte getID() {	
+		return 0;					//ID de player
+	}
+}
+
+public class Set extends Cell{
+	private SetType setType;
+	
+	public byte getID() {
+		return 1;					//ID de decor
+	}
+}
+
+public enum SetType{
+	TREE = 1, 
+	WATER = 2, 
+	ROCK = 4
+}
+
+public enum Direction{
+	LEFT = 1, 
+	UP = 2, 
+	RIGHT = 3,
+	DOWN = 4
+}
+
+public class Coordinate {
+	private int x;
+	private int y;
+}
+
+trunk/
+	Game_Server/
+		includes/
+		src/
+		doc/
+		makefile
+		
+	Game_Client/
+		lib/
+		src/
+		doc/
+		
+		
+Répartition :
+		Client : Charles, Guillaume, Julien, Kevin
+		
+		Serveur : Thibault, Nicolas
+

@@ -1,0 +1,85 @@
+Séance 4 : 7/10
+
+#define NB_JOUEURS_MAX 200
+#define TAILLE_MAP 200
+
+typedef enum {
+TREE = 1, 
+WATER = 2, 
+ROCK = 4
+} TypeDecor ;
+
+typedef union {
+	int typeUnion;				//type de l'element dans la cellule, 0 : joueur, 1 : decor, 2 : libre
+	AccessPlayer accessPlayer;				
+	Decor decor;				
+} Cell;
+
+typedef strut {
+	int typeUnion ;
+	TypeDecor typeDecor ;
+} Decor ;
+
+typedef struct {
+	int typeUnion ;
+	Player *player ;
+} AccessPlayer;
+
+typedef struct {
+	int x ;
+	int y ;
+}  Coordinate ;
+
+typedef struct {
+	Player *players[NB_JOUEURS_MAX];
+	Pile indexesAvailable;
+	int nombreJoueurs;
+} PlayerManagement;
+
+typedef struct {
+	PlayerManagement playerManagement;
+	Cellule map[TAILLE_MAP][TAILLE_MAP];
+} WorldMap ;
+
+typedef struct {
+	int index ;
+	Coordinate playerLocation;
+	char *login ;
+	//password stocké en dur
+} Player ;
+
+typedef struct {
+	int socket;
+} Network;
+
+
+Identifiant de joueur en fonction de l'ordre de connexion (ou unique via hashage ?)
+
+Stockage des joueurs : 
+	- Dans la mémoire : Stockage des joueurs connectés (via pointeurs) dans un tableau avec une pile stockant les emplacement du tableau disponibles
+	- En dur : Dans un fichier (texte)  (dans un premier temps, écrit à la main, module création de comptes pour plus tard)
+		login:mdp:x:y		
+	(x et y vides lors de la 1ere connexion)
+
+Sauvegarde régulière des infos (position joueur) (genre toutes les 10sec) ou pendant période d'inactivité.
+Ping régulier vers les clients pour détecter une déconnexion intempestive.
+
+
+
+STRUCTURES PAS DIRECTEMENT POINTEES !?
+
+Réseau en TCP !
+
+
+
+
+
+
+
+
+
+
+
+
+
+

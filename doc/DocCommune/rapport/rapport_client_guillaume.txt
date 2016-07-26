@@ -1,0 +1,85 @@
+La partie client de l'application se découpe en 3 parties :
+	- La couche IHM
+	- La couche moteur
+	- La couche réseau
+
+
+Ici, nous allons aborder les couches moteur et réseau.
+
+
+	I/ Réseau (package network)
+Il n'y a qu'une seule classe utilisée pour la couche réseau, il s'agit de la classe Client. 
+Elle a comme attributs :
+	- Les constantes identifiant les différents types de paquet.
+	- L'en tête des paquets.
+	- Le port et l'adresse IP du serveur, qui sont lues à partir d'un fichier de configuration.
+	- Un Socket relié au serveur.
+	- BufferedInputStream et BufferedOutputStream pour pouvoir dialoguer avec le serveur (en flux, par TCP).
+	- Une référence vers le Manager, classe principale du moteur.
+	- Un Timer qui, une fois la connexion avec le serveur effectuée, envoie des requêtes de type "Ping" toutes les secondes pour vérifier si la connexion entre le serveur et le client existe toujours.
+
+Lors de l'initialisation, si la connexion entre le serveur et le client s'établit, un nouveau Thread d'écoute est lancé.
+Son seul rôle est de lire en permanence le flux d'entrée, et si des données sont reçues, vérifier si le champ d'en tête est valide. 
+Si le champ d'en tête est valide, le Thread extrait les données de la trame et les envoie au Manager pour qu'il traite les informations.
+La classe dispose également d'une méthode permettant de fermer la connexion entre le serveur et le client, en fermant les flux d'entrée et de sortie, puis en fermant le Socket.
+
+Enfin, la méthode sendData() permet d'envoyer les données vers le serveur.
+Elle reçoit les données à envoyer sous forme de tableau de Byte ainsi que la longueur du paquet à envoyer, et envoie le paquet au serveur.
+
+Evidemment, toutes les exceptions sont gérées et des logs sont générés pour chaque action.
+
+
+
+
+
+
+	II/ Moteur (package game)
+Le fichier GameClient.properties contient le port et l'adresse du serveur.
+Le fichier log4j.properties contient la configuration des logs.
+le fichier standard_map.txt contient la représentation textuelle de la carte.
+La seule bibliothèque externe utilisée dans ce projet est log4j, utilisée pour la génération de fichiers de log.
+
+
+
+Il existe 2 énumérations, une représentant les types de décor (SetType), et l'autre représentant les directions de déplacement possibles (Direction).
+
+La surface de jeu est représentée par une instanciation de la classe Map. Celle-ci dispose de plusieurs attributs :
+	- La taille maximale de la carte (en hauteur et en largeur, fixées respectivement à 75 et 100).
+	- La taille effective de la carte.
+	- Une HashMap de joueurs connectés, indexés par leur index.
+	- Une référence vers le joueur local.
+	- Un tableau à 2 dimensions d'objets de type Cell, représentant une case de la carte.
+Lors de l'initialisation de la carte, le fichier "standard_map.txt" est lu et interprété, ce qui remplit le tableau représentant la carte.
+Le fichier contenant la carte doit évidemment être bien formé, ce qui est vérifié grâce à l'utilisation de la méthode match() et une expression régulière décrivant le fichier tel qu'il devrait être.
+
+La surface de jeu étant représentée par une grille, une classe Coordinate a été utilisée afin de pouvoir désigner chacune des cases de la grille, et de pouvoir les comparer entre elles ou faire des opérations (translation dans une direction, position relative de 2 cases).
+
+Les classes Player et Set, qui représentent respectivement un joueur et du décor, étendent tous les 2 la classe abstraite Cell, qui ne dispose que d'une méthode renvoyant le type d'élément de l'objet (0 si c'est un joueur, 1 si c'est un décor, 2 si la case est libre).
+
+Il existe 3 types de décor "obstacles", avec les mêmes propriétés (seul l'aspect visuel change) :
+	- Les rochers
+	- Les arbres
+	- L'eau
+Chacun de ces décors représentent un obstacle aux joueurs, qui ne peuvent pas les traverser mais qui ne gênent toutefois pas la vision.
+
+Les joueurs présents sur la grille sont des instanciations de la classe Player, qui ne dispose que de 3 attributs :
+	- Le pseudo du joueur
+	- L'index du joueur (son identifiant unique)
+	- Ses coordonnées
+Le but du projet étant de mettre en pratique les différents protocoles réseaux, et non de réaliser un jeu, nous n'avons pas jugé utile de développer le côté "jeu" de l'application, c'est pourquoi un joueur ne dispose pas de points de vie, de points de mana ou autres attributs relatifs à un personnage de jeu.
+
+Enfin, c'est dans la classe Manager que se passent tous les traitements, que ce soit les données reçues du serveur et extraites par la classe Client, ou les différentes actions du joueur local.
+Lors de la création du Manager, celui lance aussi la construction de la Map.
+Lors de l'initialisation, qui correspond au moment où l'utilisateur essaye de se connecter, un objet Client est instancié et initialisé.
+
+C'est dans cette classe que les paquets extraits par le Thread d'écoute de la classe Client sont traités dans la méthode paquetOpeningFactory().
+En fonction du type du paquet, des traitements seront effectués. Par exemple, si le type du paquet est 1, c'est une réponse positive du serveur à la demande de connexion de l'utilisateur. Si le type du paquet est 34, cela veut dire qu'un joueur s'est déplacé, et le paquet contient l'index du joueur qui a bougé, ainsi que son ancienne et sa nouvelle coordonnée.
+
+Les méthodes "dataObserver..." permettent ensuite de communiquer à l'IHM, via la méthode setData(), les données traitées, grâce à un design pattern Observable/Observer.
+
+Le Manager dispose de 3 méthodes, 
+	- sendDataLogin() qui envoie les identifiants de l'utilisateur au serveur dans une requête de connexion.
+	- sendDataMove() qui envoie une requête de déplacement dans la direction fournie au serveur.
+	- sendDataLogout() qui indique au serveur que l'utilisateur s'est déconnecté.
+	Cette méthode est appelée par la méthode logout(), qui fait ensuite appel à la méthode closeClient() du Client pour fermer les flux et le Socket en plus de prévenir le serveur de la déconnexion.
+Chacune de ces méthodes fait appel à la méthode sendData() du Client, en lui fournissant un tableau de données et la longueur du champ de données.

@@ -1,0 +1,12 @@
+													Voici la feuille à bordel !
+													
+Fonctionnalités :
+	- CHAT !
+	- Gestion de compte (création + gestion)
+	- "Séparer" l'application serveur du serveur
+	- Permettre certaines interactions avec le serveur (création/suppression de compte, ...)
+	- 
+	
+Idées améliorations :
+	- sorte de Mario 2D (MMO plateforme)
+	- Gardien de Parc (2 "factions", ...)
